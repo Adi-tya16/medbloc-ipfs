@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shared IPFS Files</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .file-item {
+            transition: all 0.2s ease-in-out;
+        }
+        .file-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-2xl bg-gray-800 rounded-xl shadow-2xl p-6 md:p-8">
+        <div id="loadingState" class="text-center text-gray-400">
+            <svg class="animate-spin h-8 w-8 text-indigo-400 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p>Loading shared files...</p>
+        </div>
+
+        <div id="content" class="hidden">
+            <h1 class="text-3xl font-bold text-center mb-2">Shared Files</h1>
+            <p id="userEmail" class="text-center text-gray-400 mb-8"></p>
+
+            <div id="fileList" class="space-y-4">
+                <!-- File items will be dynamically inserted here -->
+            </div>
+            
+            <div id="noFiles" class="hidden text-center bg-gray-700 p-6 rounded-lg">
+                <p class="text-gray-400">This user has not shared any files yet.</p>
+            </div>
+        </div>
+
+        <div id="errorState" class="hidden">
+             <div class="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded-lg text-center" role="alert">
+                <strong class="font-bold">Error:</strong>
+                <span id="errorMessage" class="block sm:inline"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // IMPORTANT: Replace this with the URL of your DEPLOYED backend (e.g., your Render URL)
+        // For local testing, it should be 'http://localhost:3001'
+        const API_URL = 'http://localhost:3001';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const loadingState = document.getElementById('loadingState');
+            const content = document.getElementById('content');
+            const errorState = document.getElementById('errorState');
+            const errorMessage = document.getElementById('errorMessage');
+            const fileList = document.getElementById('fileList');
+            const userEmailDisplay = document.getElementById('userEmail');
+            const noFilesMessage = document.getElementById('noFiles');
+
+            const fetchPublicFiles = async () => {
+                try {
+                    const params = new URLSearchParams(window.location.search);
+                    const userId = params.get('user');
+
+                    if (!userId) {
+                        throw new Error("User ID not found in URL.");
+                    }
+                    
+                    const response = await fetch(`${API_URL}/api/public/files/${userId}`);
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || `Server responded with status ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    displayFiles(data.files, data.userEmail);
+
+                } catch (error) {
+                    console.error('Failed to fetch public files:', error);
+                    errorMessage.textContent = error.message;
+                    loadingState.classList.add('hidden');
+                    errorState.classList.remove('hidden');
+                }
+            };
+
+            const displayFiles = (files, userEmail) => {
+                userEmailDisplay.textContent = `Files shared by ${userEmail}`;
+                fileList.innerHTML = ''; // Clear previous list
+
+                if (files && files.length > 0) {
+                    files.forEach(file => {
+                        const fileElement = document.createElement('div');
+                        fileElement.className = 'file-item bg-gray-700 p-4 rounded-lg flex items-center justify-between shadow-md';
+                        
+                        const date = new Date(file.timestamp).toLocaleDateString('en-US', {
+                            year: 'numeric', month: 'short', day: 'numeric'
+                        });
+
+                        fileElement.innerHTML = `
+                            <div>
+                                <p class="font-semibold text-white">${file.originalName || 'Unnamed File'}</p>
+                                <p class="text-sm text-gray-400">Uploaded: ${date !== 'Invalid Date' ? date : 'N/A'}</p>
+                            </div>
+                            <a href="https://gateway.pinata.cloud/ipfs/${file.ipfsHash}" target="_blank" rel="noopener noreferrer" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
+                                View
+                            </a>
+                        `;
+                        fileList.appendChild(fileElement);
+                    });
+                } else {
+                    noFilesMessage.classList.remove('hidden');
+                }
+
+                loadingState.classList.add('hidden');
+                content.classList.remove('hidden');
+            };
+
+            fetchPublicFiles();
+        });
+    </script>
+</body>
+</html>
+
