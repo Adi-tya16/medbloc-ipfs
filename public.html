@@ -19,11 +19,23 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
     </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-4">
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-4 relative">
 
-    <div class="w-full max-w-2xl bg-gray-800 rounded-xl shadow-2xl p-6 md:p-8">
+    <!-- Background elements to match the main app -->
+    <div class="absolute inset-0 -z-10 h-full w-full bg-slate-950 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]"></div>
+    <div class="absolute left-0 top-0 -z-10 h-1/3 w-1/3 animate-pulse bg-gradient-to-tr from-indigo-900 to-purple-900 opacity-20 blur-3xl"></div>
+    <div class="absolute bottom-0 right-0 -z-10 h-1/3 w-1/3 animate-pulse bg-gradient-to-bl from-blue-900 to-indigo-900 opacity-20 blur-3xl"></div>
+
+    <div class="w-full max-w-2xl bg-gray-800/50 border border-gray-700 rounded-xl shadow-2xl p-6 md:p-8 animate-fade-in">
         <div id="loadingState" class="text-center text-gray-400">
             <svg class="animate-spin h-8 w-8 text-indigo-400 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -40,13 +52,13 @@
                 <!-- File items will be dynamically inserted here -->
             </div>
             
-            <div id="noFiles" class="hidden text-center bg-gray-700 p-6 rounded-lg">
+            <div id="noFiles" class="hidden text-center bg-gray-700/50 p-6 rounded-lg">
                 <p class="text-gray-400">This user has not shared any files yet.</p>
             </div>
         </div>
 
         <div id="errorState" class="hidden">
-             <div class="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded-lg text-center" role="alert">
+             <div class="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-lg text-center" role="alert">
                 <strong class="font-bold">Error:</strong>
                 <span id="errorMessage" class="block sm:inline"></span>
             </div>
@@ -55,7 +67,6 @@
 
     <script>
         // IMPORTANT: Replace this with the URL of your DEPLOYED backend (e.g., your Render URL)
-        // For local testing, it should be 'http://localhost:3001'
         const API_URL = 'https://medbloc-ipfs-1.onrender.com';
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -101,7 +112,7 @@
                 if (files && files.length > 0) {
                     files.forEach(file => {
                         const fileElement = document.createElement('div');
-                        fileElement.className = 'file-item bg-gray-700 p-4 rounded-lg flex items-center justify-between shadow-md';
+                        fileElement.className = 'file-item bg-gray-700/50 p-4 rounded-lg flex items-center justify-between shadow-md';
                         
                         const date = new Date(file.timestamp).toLocaleDateString('en-US', {
                             year: 'numeric', month: 'short', day: 'numeric'
