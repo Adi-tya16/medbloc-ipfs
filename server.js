@@ -8,15 +8,12 @@ const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const QRCode = require('qrcode');
-const FormData = require('form-data'); // <-- ADD THIS LINE
+const FormData = require('form-data');
 
 // Firebase Admin SDK for backend services
 const admin = require('firebase-admin');
 
 // --- IMPORTANT: PARSE FIREBASE PRIVATE KEY ---
-// Firebase requires the private_key to have its newlines preserved.
-// When storing it in a .env file, you must wrap it in quotes and encode the newlines as \n.
-// This code will decode it back to the format Firebase needs.
 let privateKey;
 try {
     if (!process.env.FIREBASE_PRIVATE_KEY) {
@@ -41,40 +38,28 @@ const app = express();
 const port = 3001;
 
 // --- MIDDLEWARE SETUP ---
-// Enable CORS for all origins. This is suitable for development.
-// When you deploy to a live server, you should restrict this to your specific frontend URL
-// by setting the CORS_ORIGIN environment variable on your server platform (e.g., Render).
 app.use(cors({
     origin: process.env.CORS_ORIGIN || '*'
 }));
-
-
-// To handle JSON payloads
 app.use(express.json());
-
-// Multer setup for temporary file storage
 const upload = multer({ dest: 'uploads/' });
 
 // --- AUTHENTICATION MIDDLEWARE ---
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = authHeader && authHeader.split(' ')[1];
 
-    if (token == null) return res.sendStatus(401); // if there isn't any token
+    if (token == null) return res.sendStatus(401);
 
     jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) return res.sendStatus(403); // if token is no longer valid
-        
-        // FIX: Add a check to ensure the token payload has the required user ID (uid)
+        if (err) return res.sendStatus(403);
         if (!user || !user.uid) {
             return res.status(403).json({ message: "Invalid token: User ID is missing." });
         }
-
         req.user = user;
-        next(); // move on to the next middleware or the route handler
+        next();
     });
 };
-
 
 // --- API ROUTES ---
 
@@ -83,15 +68,16 @@ app.get('/', (req, res) => {
     res.send('✅ IPFS QR Portal Backend is running!');
 });
 
-// 2. User Registration
+// 2. User Registration (Full Version)
 app.post('/api/register', async (req, res) => {
     try {
-        const { email, password } = req.body;
-        if (!email || !password) {
-            return res.status(400).json({ message: "Email and password are required." });
+        const { name, email, password, phone, age, gender, role, state } = req.body;
+        
+        if (!name || !email || !password || !phone || !age || !gender || !role || !state) {
+            return res.status(400).json({ message: "All fields are required." });
         }
+        
         const hashedPassword = await bcrypt.hash(password, 10);
-        // Use email as the document ID for easy lookup and to prevent duplicates
         const userRef = db.collection('users').doc(email);
         const doc = await userRef.get();
 
@@ -100,17 +86,18 @@ app.post('/api/register', async (req, res) => {
         }
         
         const userPayload = {
+            name,
             email,
             password: hashedPassword,
+            phone,
+            age,
+            gender,
+            role,
+            state,
             createdAt: new Date().toISOString()
         };
         await userRef.set(userPayload);
         
-        // Firestore creates a unique ID for the user document, let's get it to use in the token
-        const newUserDoc = await userRef.get();
-        const userRecord = newUserDoc.data();
-        userRecord.uid = newUserDoc.id; // Add the unique document ID to the user record
-
         res.status(201).json({ message: "User created successfully. Please login." });
 
     } catch (error) {
@@ -119,7 +106,7 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// 3. User Login
+// 3. User Login (With Role)
 app.post('/api/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -132,10 +119,10 @@ app.post('/api/login', async (req, res) => {
         const user = doc.data();
 
         if (await bcrypt.compare(password, user.password)) {
-            // Create a token payload. We'll use the document ID (email) as the unique identifier.
-            const accessTokenPayload = { email: user.email, uid: doc.id };
+            const accessTokenPayload = { email: user.email, uid: doc.id, role: user.role };
             const accessToken = jwt.sign(accessTokenPayload, process.env.JWT_SECRET);
-            res.json({ accessToken, email: user.email });
+            // UPDATED: Send back user's name instead of email for display
+            res.json({ accessToken, name: user.name, role: user.role });
         } else {
             res.status(400).json({ message: "Invalid credentials." });
         }
@@ -155,7 +142,6 @@ app.post('/api/upload', authenticateToken, upload.single('file'), async (req, re
     try {
         const formData = new FormData();
         const fileStream = fs.createReadStream(req.file.path);
-        // FIX: Added original filename to the form data, which is required by Pinata
         formData.append('file', fileStream, { filename: req.file.originalname });
 
         const pinataResponse = await axios.post('https://api.pinata.cloud/pinning/pinFileToIPFS', formData, {
@@ -165,7 +151,6 @@ app.post('/api/upload', authenticateToken, upload.single('file'), async (req, re
             }
         });
 
-        // Save file metadata to the user's collection in Firestore
         const userFilesRef = db.collection('users').doc(req.user.uid).collection('files');
         await userFilesRef.add({
             ipfsHash: pinataResponse.data.IpfsHash,
@@ -178,7 +163,6 @@ app.post('/api/upload', authenticateToken, upload.single('file'), async (req, re
         console.error("Pinata Upload Error:", error.response ? error.response.data : error.message);
         res.status(500).json({ message: "An error occurred during file upload." });
     } finally {
-        // Clean up the temp file
         fs.unlink(req.file.path, (err) => {
             if (err) console.error("Error deleting temp file:", err);
         });
@@ -201,7 +185,6 @@ app.get('/api/files', authenticateToken, async (req, res) => {
 app.get('/api/share', authenticateToken, async (req, res) => {
     try {
         const publicUrl = `${process.env.FRONTEND_URL}/public.html?user=${req.user.uid}`;
-        // DEBUGGING: Log the generated URL to the console
         console.log('Generated Public URL for QR Code:', publicUrl);
         const qrCodeUrl = await QRCode.toDataURL(publicUrl);
         res.json({ qrCodeUrl });
