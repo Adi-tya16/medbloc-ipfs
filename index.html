@@ -187,7 +187,7 @@
                 <div>
                     <h1 class="text-2xl sm:text-3xl font-bold">Your IPFS Dashboard</h1>
                     <div class="flex items-center space-x-2 text-gray-400 mt-1">
-                         <p id="userNameDisplay"></p> <!-- UPDATED ID -->
+                         <p id="userNameDisplay"></p>
                          <span class="text-gray-600">&bull;</span>
                          <p id="userRoleDisplay" class="font-semibold capitalize"></p>
                     </div>
@@ -244,7 +244,7 @@
         const authMessage = document.getElementById('authMessage');
         const uploadMessage = document.getElementById('uploadMessage');
         const fileList = document.getElementById('fileList');
-        const userNameDisplay = document.getElementById('userNameDisplay'); // UPDATED
+        const userNameDisplay = document.getElementById('userNameDisplay');
         const userRoleDisplay = document.getElementById('userRoleDisplay');
         const logoutButton = document.getElementById('logoutButton');
         const shareButton = document.getElementById('shareButton');
@@ -286,20 +286,20 @@
             authMessage.textContent = '';
         };
         
-        const showDashboard = (token, name, role) => { // UPDATED
+        const showDashboard = (token, name, role) => {
             localStorage.setItem('accessToken', token);
-            localStorage.setItem('userName', name); // UPDATED
+            localStorage.setItem('userName', name);
             localStorage.setItem('userRole', role);
             authView.classList.add('hidden');
             dashboardView.classList.remove('hidden');
-            userNameDisplay.textContent = name; // UPDATED
+            userNameDisplay.textContent = name;
             userRoleDisplay.textContent = role || 'N/A';
             fetchUserFiles();
         };
 
         const logout = () => {
             localStorage.removeItem('accessToken');
-            localStorage.removeItem('userName'); // UPDATED
+            localStorage.removeItem('userName');
             localStorage.removeItem('userRole');
             authView.classList.remove('hidden');
             dashboardView.classList.add('hidden');
@@ -375,7 +375,7 @@
                 });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.message);
-                showDashboard(data.accessToken, data.name, data.role); // UPDATED
+                showDashboard(data.accessToken, data.name, data.role);
             } catch (error) {
                 showAuthMessage(error.message, true);
             }
@@ -469,11 +469,11 @@
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
             const token = localStorage.getItem('accessToken');
-            const name = localStorage.getItem('userName'); // UPDATED
+            const name = localStorage.getItem('userName');
             const role = localStorage.getItem('userRole');
-            if (token && name) { // UPDATED
+            if (token && name) {
                 fetch(API_URL).then(res => {
-                    if (res.ok) showDashboard(token, name, role); // UPDATED
+                    if (res.ok) showDashboard(token, name, role);
                     else logout();
                 }).catch(() => logout());
             }
