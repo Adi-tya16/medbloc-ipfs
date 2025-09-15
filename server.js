@@ -106,7 +106,7 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// 3. User Login (With Role)
+// 3. User Login (With Role and Name)
 app.post('/api/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -121,7 +121,6 @@ app.post('/api/login', async (req, res) => {
         if (await bcrypt.compare(password, user.password)) {
             const accessTokenPayload = { email: user.email, uid: doc.id, role: user.role };
             const accessToken = jwt.sign(accessTokenPayload, process.env.JWT_SECRET);
-            // UPDATED: Send back user's name instead of email for display
             res.json({ accessToken, name: user.name, role: user.role });
         } else {
             res.status(400).json({ message: "Invalid credentials." });
