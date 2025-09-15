@@ -230,12 +230,8 @@
     </div>
     
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const API_URL = 'https://medbloc-ipfs.onrender.com';
-
-            // --- STATE ---
-            let authToken = localStorage.getItem('authToken');
-            let userEmail = localStorage.getItem('userEmail');
+        // --- CONFIGURATION ---
+        const API_URL = 'http://localhost:3001';
 
         // --- DOM ELEMENTS ---
         const authView = document.getElementById('authView');
